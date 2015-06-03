@@ -8,9 +8,11 @@ import java.nio.channels.SocketChannel;
 
 import com.google.gson.Gson;
 import com.handle.domain.User;
+import com.handle.util.ErrorCodeMapping;
 import com.handle.util.MsgBase;
 import com.handle.util.RequestResponseCodeMapping;
 import com.handle.util.response.LonginResponse;
+import com.handle.util.response.RegisterResponse;
 
 public class HandleThread extends Thread {
 
@@ -52,9 +54,11 @@ public class HandleThread extends Thread {
         while (isRunning) {
             try {
                 String returnMsg = retrieveResponse();
-                MsgBase mBase =  new Gson().fromJson(returnMsg, MsgBase.class);
-                if(mBase.getType()==RequestResponseCodeMapping.LOGINREQUESTCODE){
+                MsgBase mBase = new Gson().fromJson(returnMsg, MsgBase.class);
+                if (mBase.getType() == RequestResponseCodeMapping.LOGINREQUESTCODE) {
                     doLongin(returnMsg);
+                }else  if (mBase.getType() == RequestResponseCodeMapping.REGISTER_REQUESTCODE) {
+                    doRegister(returnMsg);
                 }
             }
             catch (IOException e) {
@@ -93,15 +97,52 @@ public class HandleThread extends Thread {
 
     }
 
-    private void doLongin(String recieveMsg){
-        System.out.println(recieveMsg);
+    private void doLongin(String recieveMsg) {
         User user = (User) new User().initFromJson(recieveMsg);
         user.load();
-        System.out.println(user.toJsonString());
         LonginResponse loginResponse = new LonginResponse();
         loginResponse.setUser(user.getUser());
+        if (!user.isFound) {
+            loginResponse.setReturCode(ErrorCodeMapping.ERROR_CODE_USERNAMEPASSWORD_ERROR);
+        }
+        else {
+            loginResponse.setReturCode(ErrorCodeMapping.NO_ERROR);
+        }
         try {
             sendMessage(new Gson().toJson(loginResponse));
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void doRegister(String recieveMsg) {
+        User user = (User) new User().initFromJson(recieveMsg);
+        RegisterResponse registerResponse = new RegisterResponse();
+        User _user = new User();
+        _user.setUserId(user.getUserId());
+        _user.loadByUserId();
+        if (_user.isFound) {
+            registerResponse.setReturCode(ErrorCodeMapping.ERROR_DUPLICATED);
+        }
+        else {
+            int checkCode = user.check();
+            if (checkCode != ErrorCodeMapping.NO_ERROR) {
+                registerResponse.setReturCode(checkCode);
+            }
+            else {
+                int ret = user.save();
+                if (ret != 1) {
+                    registerResponse.setReturCode(ErrorCodeMapping.ERROR_REGISTER);
+                }
+                else {
+                    registerResponse.setReturCode(ErrorCodeMapping.NO_ERROR);
+                }
+            }
+        }
+        registerResponse.setUser(user.getUser());
+        try {
+            sendMessage(new Gson().toJson(registerResponse));
         }
         catch (IOException e) {
             e.printStackTrace();

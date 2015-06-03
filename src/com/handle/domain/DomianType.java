@@ -14,6 +14,7 @@ public abstract class DomianType {
 
     public String tableName;
 
+    public boolean isFound = false;
     public abstract List<DomianType> loadAll();
 
     public abstract String getloadSql();
@@ -56,4 +57,17 @@ public abstract class DomianType {
         this.tableName = tableName;
     }
 
+    public boolean isFound() {
+
+        return isFound;
+    }
+
+    public void setFound(boolean isFound) {
+
+        this.isFound = isFound;
+    }
+
+    public String formatStr(String str) {
+        return str == null ? "" : str;
+    }
 }

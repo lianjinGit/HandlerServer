@@ -22,6 +22,7 @@ public class DBUtil {
         catch (SQLException e) {
             logger.error("SQL:" + sql);
             logger.error(e);
+            e.printStackTrace();
             return -1;
         }
     }
